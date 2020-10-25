@@ -129,7 +129,7 @@ class WeatherEventMsg : public Message {
       if ( batlow == true ) {
         t1 |= 0x80; // set bat low bit
       }
-      Message::init(0x18, msgcnt, 0x70, BIDI | WKMEUP, t1, t2);
+      Message::init(0x16, msgcnt, 0x70, BIDI | WKMEUP, t1, t2);
       pload[0] = humidity & 0xff;
       pload[1] = (tvoc >> 8) & 0xff;
       pload[2] = tvoc & 0xff;         
@@ -157,6 +157,7 @@ class WeatherChannel : public Channel<Hal, List1, EmptyList, List4, PEERS_PER_CH
       sgpc3.measure((float)sht31.temperature(), (float)sht31.humidity());
       DPRINT("temp / hum = ");DDEC(sht31.temperature());DPRINT(" / ");DDECLN(sht31.humidity());
       DPRINT("TVOC / IAQ-State = ");DDEC(sgpc3.tvoc());DPRINT(" / ");DDECLN(sgpc3.iaq());
+      DPRINT("Batterie = ");DDECLN(device().battery().current() / 100);
       msg.init( msgcnt, sht31.temperature(), sht31.humidity(), sgpc3.tvoc(), sgpc3.iaq(), device().battery().current() / 100, device().battery().low());
 
       if (msgcnt % 10 == 2) device().sendPeerEvent(msg, *this); else device().broadcastEvent(msg, *this);
