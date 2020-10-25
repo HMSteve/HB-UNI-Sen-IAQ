@@ -60,7 +60,7 @@ using namespace as;
 const struct DeviceInfo PROGMEM devinfo = {
   {0xf8, 0x01, 0x01},     // Device ID
   "SGSENIAQ01",           // Device Serial
-  {0xf8, 0xd1},           // Device Model Indoor //orig 0xf1d1
+  {0xf8, 0x01},           // Device Model Indoor //orig 0xf1d1
   0x10,                   // Firmware Version
   as::DeviceType::THSensor, // Device Type
   {0x01, 0x00}            // Info Bytes
@@ -140,10 +140,9 @@ class WeatherEventMsg : public Message {
 
 class WeatherChannel : public Channel<Hal, List1, EmptyList, List4, PEERS_PER_CHANNEL, SensorList0>, public Alarm {
     WeatherEventMsg msg;
-    //Sens_SHT31<0x44>    sht31;  //SG: GY breakout board standard address
-    Sens_SHT31<>    sht31;  //SG: GY breakout board standard address
-    Sens_SGPC3          sgpc3;
-    uint16_t        millis;
+    Sens_SHT31<0x44>    sht31;  //SG: GY breakout board standard address
+    Sens_SGPC3    sgpc3;
+    uint16_t      millis;
 
   public:
     WeatherChannel () : Channel(), Alarm(10), millis(0) {}
