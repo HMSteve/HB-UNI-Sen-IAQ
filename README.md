@@ -4,12 +4,12 @@ Eine AskSinPP-Implementierung eines Innenraum-Sensos mit dem IAQ-Sensor SGPC3 so
 
 [AskSinPP 1284 Board](https://github.com/HMSteve/PCBs/tree/master/AskSinPP_1284_Board)
 
-Da SGPC3 Breakout Boards im Standardformat mit I2C-Schnittstelle nicht am Markt zu finden waren, habe ich ein eigenes erstellt: [SGPC3 Breakout Board](https://github.com/HMSteve/PCBs/tree/master/SGPC3_BreakoutBoard). Grundsaetlich kann auch der leichter verfuegbare SGP30 genutzt werden, wenn der Sketch entsprechend angepasst wird, jedoch ist dieser bzgl. des Stromverbrauchs nicht fuer den Batteriebetrieb optimiert.
+Da SGPC3 Breakout Boards im Standardformat mit I2C-Schnittstelle nicht am Markt zu finden waren, habe ich ein eigenes erstellt: [SGPC3 Breakout Board](https://github.com/HMSteve/PCBs/tree/master/SGPC3_BreakoutBoard). Grundsaetzlich kann auch der leichter verfuegbare SGP30 genutzt werden, wenn der Sketch entsprechend angepasst wird, jedoch ist dieser bzgl. des Stromverbrauchs nicht fuer den Batteriebetrieb optimiert.
 
 
 ## Software
 
-Sofern noch nicht vorhanden oder nicht aktuell, ist das [Addon](https://github.com/HMSteve/SG-HB-Devices-Addon/raw/master/CCU_RM/sg-hb-devices-addon.tgz) auf der CCU zu installieren. Der Sensor benoetigt mindestens Version 1.0.
+Sofern noch nicht vorhanden oder nicht aktuell, ist das [Addon](https://github.com/HMSteve/SG-HB-Devices-Addon/raw/master/CCU_RM/sg-hb-devices-addon.tgz) auf der CCU zu installieren. Der Sensor benoetigt mindestens Version 1.10.
 
 Die AskSinPP-Platine wird wie ueblich geflasht und kann dann angelernt werden.
 
