@@ -42,7 +42,7 @@
 
 
 #define PEERS_PER_CHANNEL 6
-#define SAMPLINGINTERVALL_IN_SECONDS 11  //SG: changed from 240 for testing
+#define SAMPLINGINTERVALL_IN_SECONDS 180  
 //#define BATT_SENSOR tmBatteryResDiv<A0, A1, 5700>  //SG: taken from Tom's Unisensor01
 // tmBatteryLoad: sense pin A0, activation pin D9, Faktor = Rges/Rlow*1000, z.B. 10/30 Ohm, Faktor 40/10*1000 = 4000, 200ms Belastung vor Messung
 // 1248p has 2.56V ARef, 328p has 1.1V ARef
@@ -93,7 +93,7 @@ class Hal : public BaseHal {
       // measure battery every a*b*c seconds
       battery.init(seconds2ticks(60UL * 60 * 6), sysclock);  // 60UL * 60 for 1hour
       battery.low(18);
-      battery.critical(15);
+      battery.critical(16);
     }
 
     bool runready () {
@@ -101,7 +101,7 @@ class Hal : public BaseHal {
     }
 } hal;
 
-DEFREGISTER(Reg0, MASTERID_REGS, 0x20, 0x21, 0x22, 0x23)
+DEFREGISTER(Reg0, MASTERID_REGS, 0x20, 0x21)
 class SensorList0 : public RegList0<Reg0> {
   public:
     SensorList0(uint16_t addr) : RegList0<Reg0>(addr) {}
@@ -129,7 +129,13 @@ class WeatherEventMsg : public Message {
       if ( batlow == true ) {
         t1 |= 0x80; // set bat low bit
       }
-      Message::init(0x16, msgcnt, 0x70, BIDI | WKMEUP, t1, t2);
+      // BIDI|WKMEUP every 20th msg
+      uint8_t flags = BCAST;
+      if ((msgcnt % 20) == 1) {
+          flags = BIDI | WKMEUP;
+      }      
+      // Message Length (first byte param.): 11 + payload. Max. payload: 17 Bytes (https://www.youtube.com/watch?v=uAyzimU60jw)
+      Message::init(16, msgcnt, 0x70, flags, t1, t2);
       pload[0] = humidity & 0xff;
       pload[1] = (tvoc >> 8) & 0xff;
       pload[2] = tvoc & 0xff;         
@@ -159,8 +165,13 @@ class WeatherChannel : public Channel<Hal, List1, EmptyList, List4, PEERS_PER_CH
       DPRINT("TVOC / IAQ-State = ");DDEC(sgpc3.tvoc());DPRINT(" / ");DDECLN(sgpc3.iaq());
       DPRINT("Batterie = ");DDECLN(device().battery().current() / 100);
       msg.init( msgcnt, sht31.temperature(), sht31.humidity(), sgpc3.tvoc(), sgpc3.iaq(), device().battery().current() / 100, device().battery().low());
-
-      if (msgcnt % 10 == 2) device().sendPeerEvent(msg, *this); else device().broadcastEvent(msg, *this);
+      if (msg.flags() & Message::BCAST) {
+        device().broadcastEvent(msg, *this);
+      }
+      else
+      {
+        device().sendPeerEvent(msg, *this);
+      }
     }
 
     uint32_t delay () {
