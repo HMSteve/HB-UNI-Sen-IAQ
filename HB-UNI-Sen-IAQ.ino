@@ -13,6 +13,9 @@
 #define EI_NOTEXTERNAL
 #define M1284P // select pin config for ATMega1284p board
 
+#define BAT_VOLT_LOW        16  // 1.6V for Alkaline with Stepup, 2.4V for 2x Eneloop 
+#define BAT_VOLT_CRITICAL   18  // 1.8V for Alkaline with Stepup, 2.3V for 2x Eneloop
+
 #include <EnableInterrupt.h>
 #include <AskSinPP.h>
 #include <LowPower.h>
@@ -42,7 +45,6 @@
 
 
 #define PEERS_PER_CHANNEL 6
-#define SAMPLINGINTERVALL_IN_SECONDS 180  
 //#define BATT_SENSOR tmBatteryResDiv<A0, A1, 5700>  //SG: taken from Tom's Unisensor01
 // tmBatteryLoad: sense pin A0, activation pin D9, Faktor = Rges/Rlow*1000, z.B. 10/30 Ohm, Faktor 40/10*1000 = 4000, 200ms Belastung vor Messung
 // 1248p has 2.56V ARef, 328p has 1.1V ARef
@@ -92,8 +94,8 @@ class Hal : public BaseHal {
 #endif
       // measure battery every a*b*c seconds
       battery.init(seconds2ticks(60UL * 60 * 6), sysclock);  // 60UL * 60 for 1hour
-      battery.low(18);
-      battery.critical(16);
+      battery.low(BAT_VOLT_LOW);
+      battery.critical(BAT_VOLT_CRITICAL);
     }
 
     bool runready () {
@@ -101,7 +103,7 @@ class Hal : public BaseHal {
     }
 } hal;
 
-DEFREGISTER(Reg0, MASTERID_REGS, 0x20, 0x21)
+DEFREGISTER(Reg0, MASTERID_REGS, DREG_LEDMODE, DREG_LOWBATLIMIT, DREG_TRANSMITTRYMAX, 0x20, 0x21)
 class SensorList0 : public RegList0<Reg0> {
   public:
     SensorList0(uint16_t addr) : RegList0<Reg0>(addr) {}
@@ -116,6 +118,9 @@ class SensorList0 : public RegList0<Reg0> {
 
     void defaults () {
       clear();
+      ledMode(1);
+      lowBatLimit(BAT_VOLT_LOW);
+      transmitDevTryMax(3);           
       updIntervall(11);
     }
 };
@@ -175,8 +180,9 @@ class WeatherChannel : public Channel<Hal, List1, EmptyList, List4, PEERS_PER_CH
     }
 
     uint32_t delay () {
-      return seconds2ticks(max(this->device().getList0().updIntervall(),SAMPLINGINTERVALL_IN_SECONDS));
+      return seconds2ticks(this->device().getList0().updIntervall());
     }
+    
     void setup(Device<Hal, SensorList0>* dev, uint8_t number, uint16_t addr) {
       Channel::setup(dev, number, addr);
       sht31.init();
@@ -196,12 +202,17 @@ class WeatherChannel : public Channel<Hal, List1, EmptyList, List4, PEERS_PER_CH
 class IAQDevice : public MultiChannelDevice<Hal, WeatherChannel, 1, SensorList0> {
   public:
     typedef MultiChannelDevice<Hal, WeatherChannel, 1, SensorList0> TSDevice;
+    
     IAQDevice(const DeviceInfo& info, uint16_t addr) : TSDevice(info, addr) {}
+    
     virtual ~IAQDevice () {}
 
     virtual void configChanged () {
       TSDevice::configChanged();
       DPRINTLN("* Config Changed       : List0");
+      DPRINT(F("* LED Mode             : ")); DDECLN(this->getList0().ledMode());    
+      DPRINT(F("* Low Bat Limit        : ")); DDECLN(this->getList0().lowBatLimit()); 
+      DPRINT(F("* Sendeversuche        : ")); DDECLN(this->getList0().transmitDevTryMax());          
       DPRINT(F("* SENDEINTERVALL       : ")); DDECLN(this->getList0().updIntervall());
     }
 };
