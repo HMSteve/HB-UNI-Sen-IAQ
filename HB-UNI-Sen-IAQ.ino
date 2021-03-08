@@ -154,29 +154,34 @@ class WeatherChannel : public Channel<Hal, List1, EmptyList, List4, PEERS_PER_CH
     Sens_SHT31<0x44>    sht31;  //SG: GY breakout board standard address
     Sens_SGPC3    sgpc3;
     uint16_t      millis;
+    uint8_t       measurecounter = 0;
 
   public:
     WeatherChannel () : Channel(), Alarm(10), millis(0) {}
     virtual ~WeatherChannel () {}
 
     virtual void trigger (__attribute__ ((unused)) AlarmClock& clock) {
-      uint8_t msgcnt = device().nextcount();
-      // reactivate for next measure
-      tick = delay();
+      // reactivate for next measure, need to be every 30s for SGPC3
+      tick = seconds2ticks(30);
       clock.add(*this);
       sht31.measure();
       sgpc3.measure((float)sht31.temperature(), (float)sht31.humidity());
       DPRINT("temp / hum = ");DDEC(sht31.temperature());DPRINT(" / ");DDECLN(sht31.humidity());
       DPRINT("TVOC / IAQ-State = ");DDEC(sgpc3.tvoc());DPRINT(" / ");DDECLN(sgpc3.iaq());
       DPRINT("Batterie = ");DDECLN(device().battery().current() / 100);
-      msg.init( msgcnt, sht31.temperature(), sht31.humidity(), sgpc3.tvoc(), sgpc3.iaq(), device().battery().current() / 100, device().battery().low());
-      if (msg.flags() & Message::BCAST) {
-        device().broadcastEvent(msg, *this);
-      }
-      else
-      {
-        device().sendPeerEvent(msg, *this);
-      }
+      measurecounter++;
+      if (measurecounter >= this->device().getList0().updIntervall() / 30) {
+        measurecounter=0;
+        uint8_t msgcnt = device().nextcount();
+        msg.init( msgcnt, sht31.temperature(), sht31.humidity(), sgpc3.tvoc(), sgpc3.iaq(), device().battery().current() / 100, device().battery().low());
+        if (msg.flags() & Message::BCAST) {
+          device().broadcastEvent(msg, *this);
+        }
+        else
+        {
+          device().sendPeerEvent(msg, *this);
+        }
+      }        
     }
 
     uint32_t delay () {
