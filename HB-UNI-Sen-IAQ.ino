@@ -6,15 +6,11 @@
 // 2020-10-25 IAQ Sensor, HMSteve (cc)
 //- -----------------------------------------------------------------------------------------------------------------------
 
-//#define NDEBUG   // disable all serial debug messages  //necessary to fit 328p!!!
-// #define USE_CC1101_ALT_FREQ_86835  //use alternative frequency to compensate not correct working cc1101 modules
+//#define NDEBUG   // disable all serial debug messages  
 #define SENSOR_ONLY
 
 #define EI_NOTEXTERNAL
 #define M1284P // select pin config for ATMega1284p board
-
-#define BAT_VOLT_LOW        16  // 1.6V for Alkaline with Stepup, 2.4V for 2x Eneloop 
-#define BAT_VOLT_CRITICAL   18  // 1.8V for Alkaline with Stepup, 2.3V for 2x Eneloop
 
 #include <EnableInterrupt.h>
 #include <AskSinPP.h>
@@ -86,22 +82,17 @@ class Hal : public BaseHal {
   public:
     void init (const HMID& id) {
       BaseHal::init(id);
-#ifdef USE_CC1101_ALT_FREQ_86835
-      // 2165E8 == 868.35 MHz
-      radio.initReg(CC1101_FREQ2, 0x21);
-      radio.initReg(CC1101_FREQ1, 0x65);
-      radio.initReg(CC1101_FREQ0, 0xE8);
-#endif
       // measure battery every a*b*c seconds
       battery.init(seconds2ticks(60UL * 60 * 6), sysclock);  // 60UL * 60 for 1hour
-      battery.low(BAT_VOLT_LOW);
-      battery.critical(BAT_VOLT_CRITICAL);
+      battery.low(18);
+      battery.critical(16);
     }
 
     bool runready () {
       return sysclock.runready() || BaseHal::runready();
     }
 } hal;
+
 
 DEFREGISTER(Reg0, MASTERID_REGS, DREG_LEDMODE, DREG_LOWBATLIMIT, DREG_TRANSMITTRYMAX, 0x20, 0x21)
 class SensorList0 : public RegList0<Reg0> {
@@ -119,9 +110,9 @@ class SensorList0 : public RegList0<Reg0> {
     void defaults () {
       clear();
       ledMode(1);
-      lowBatLimit(BAT_VOLT_LOW);
+      lowBatLimit(18);
       transmitDevTryMax(3);           
-      updIntervall(11);
+      updIntervall(30);
     }
 };
 
@@ -184,10 +175,7 @@ class WeatherChannel : public Channel<Hal, List1, EmptyList, List4, PEERS_PER_CH
       }        
     }
 
-    uint32_t delay () {
-      return seconds2ticks(this->device().getList0().updIntervall());
-    }
-    
+
     void setup(Device<Hal, SensorList0>* dev, uint8_t number, uint16_t addr) {
       Channel::setup(dev, number, addr);
       sht31.init();
@@ -214,6 +202,7 @@ class IAQDevice : public MultiChannelDevice<Hal, WeatherChannel, 1, SensorList0>
 
     virtual void configChanged () {
       TSDevice::configChanged();
+      this->battery().low(this->getList0().lowBatLimit());
       DPRINTLN("* Config Changed       : List0");
       DPRINT(F("* LED Mode             : ")); DDECLN(this->getList0().ledMode());    
       DPRINT(F("* Low Bat Limit        : ")); DDECLN(this->getList0().lowBatLimit()); 
@@ -222,17 +211,23 @@ class IAQDevice : public MultiChannelDevice<Hal, WeatherChannel, 1, SensorList0>
     }
 };
 
+
 IAQDevice sdev(devinfo, 0x20);
 ConfigButton<IAQDevice> cfgBtn(sdev);
+
 
 void setup () {
   //SG: switch on MOSFET to power CC1101
   pinMode(CC1101_PWR_SW_PIN, OUTPUT);
   digitalWrite (CC1101_PWR_SW_PIN, LOW);
 
-  
   DINIT(57600, ASKSIN_PLUS_PLUS_IDENTIFIER);
   sdev.init(hal);
+  //oscillator frequ ... MHz
+  hal.radio.initReg(CC1101_FREQ2, 0x21);
+  hal.radio.initReg(CC1101_FREQ1, 0x65);
+  hal.radio.initReg(CC1101_FREQ0, 0xC5); //gg SDR kalibriert
+  
   buttonISR(cfgBtn, CONFIG_BUTTON_PIN);
   sdev.initDone();
 
@@ -242,6 +237,12 @@ void loop() {
   bool worked = hal.runready();
   bool poll = sdev.pollRadio();
   if ( worked == false && poll == false ) {
+    if (hal.battery.critical()) {
+      // this call will never return
+      pinMode(CC1101_PWR_SW_PIN, INPUT);
+      hal.activity.sleepForever(hal);      
+    }    
+    // if nothing to do - go to sleep    
     hal.activity.savePower<Sleep<>>(hal);
   }
 }
