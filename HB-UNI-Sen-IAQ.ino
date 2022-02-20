@@ -29,9 +29,9 @@
  #define CC1101_SCK_PIN      7 
  #define CC1101_MOSI_PIN     5 
  #define CC1101_MISO_PIN     6 
- #define LED_PIN 14             //LEDs on PD6 (Arduino Pin 14) and PD7 (Arduino Pin 15) 
+ #define LED_PIN 12  //14           //LEDs on PD6 (Arduino Pin 14) and PD7 (Arduino Pin 15) 
  #define LED_PIN2 15
- #define CONFIG_BUTTON_PIN 13
+ #define CONFIG_BUTTON_PIN 14 //13
  #define CC1101_PWR_SW_PIN 27
 #else
   // Stephans AskSinPP Universal Board v1.0
